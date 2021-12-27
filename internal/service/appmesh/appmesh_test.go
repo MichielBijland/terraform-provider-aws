@@ -7,12 +7,15 @@ import (
 func TestAccAppMesh_serial(t *testing.T) {
 	testCases := map[string]map[string]func(t *testing.T){
 		"GatewayRoute": {
-			"basic":      testAccGatewayRoute_basic,
-			"disappears": testAccGatewayRoute_disappears,
-			"grpcRoute":  testAccGatewayRoute_GRPCRoute,
-			"httpRoute":  testAccGatewayRoute_HTTPRoute,
-			"http2Route": testAccGatewayRoute_HTTP2Route,
-			"tags":       testAccGatewayRoute_Tags,
+			"basic":             testAccGatewayRoute_basic,
+			"disappears":        testAccGatewayRoute_disappears,
+			"grpcRoute":         testAccGatewayRoute_GRPCRoute,
+			"grpcRouteRewrite":  testAccGatewayRoute_GRPCRouteRewrite,
+			"httpRoute":         testAccGatewayRoute_HTTPRoute,
+			"httpRouteRewrite":  testAccGatewayRoute_HTTPRouteRewrite,
+			"http2Route":        testAccGatewayRoute_HTTP2Route,
+			"http2RouteRewrite": testAccGatewayRoute_HTTP2RouteRewrite,
+			"tags":              testAccGatewayRoute_Tags,
 		},
 		"Mesh": {
 			"basic":        testAccMesh_basic,

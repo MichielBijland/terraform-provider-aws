@@ -19,6 +19,135 @@ import (
 	"github.com/hashicorp/terraform-provider-aws/internal/verify"
 )
 
+func HttpGatewayRouteSchema() *schema.Schema {
+	return &schema.Schema{
+		Type:     schema.TypeList,
+		Optional: true,
+		MinItems: 0,
+		MaxItems: 1,
+		Elem: &schema.Resource{
+			Schema: map[string]*schema.Schema{
+				"action": {
+					Type:     schema.TypeList,
+					Required: true,
+					MinItems: 1,
+					MaxItems: 1,
+					Elem: &schema.Resource{
+						Schema: map[string]*schema.Schema{
+							"target": {
+								Type:     schema.TypeList,
+								Required: true,
+								MinItems: 1,
+								MaxItems: 1,
+								Elem: &schema.Resource{
+									Schema: map[string]*schema.Schema{
+										"virtual_service": {
+											Type:     schema.TypeList,
+											Required: true,
+											MinItems: 1,
+											MaxItems: 1,
+											Elem: &schema.Resource{
+												Schema: map[string]*schema.Schema{
+													"virtual_service_name": {
+														Type:         schema.TypeString,
+														Required:     true,
+														ValidateFunc: validation.StringLenBetween(1, 255),
+													},
+												},
+											},
+										},
+									},
+								},
+							},
+							"rewrite": {
+								Type:     schema.TypeList,
+								Optional: true,
+								MinItems: 0,
+								MaxItems: 1,
+								Elem: &schema.Resource{
+									Schema: map[string]*schema.Schema{
+										"path": {
+											Type:     schema.TypeList,
+											Optional: true,
+											MinItems: 0,
+											MaxItems: 1,
+											Elem: &schema.Resource{
+												Schema: map[string]*schema.Schema{
+													"exact": {
+														Type:         schema.TypeString,
+														Optional:     true,
+														ValidateFunc: validation.StringLenBetween(1, 255),
+													},
+												},
+											},
+										},
+										"hostname": {
+											Type:     schema.TypeList,
+											Optional: true,
+											MinItems: 0,
+											MaxItems: 1,
+											Elem: &schema.Resource{
+												Schema: map[string]*schema.Schema{
+													"default_target_hostname": {
+														Type:         schema.TypeString,
+														Optional:     true,
+														ValidateFunc: validation.StringInSlice(appmesh.DefaultGatewayRouteRewrite_Values(), false),
+													},
+												},
+											},
+										},
+										"prefix": {
+											Type:     schema.TypeList,
+											Optional: true,
+											MinItems: 0,
+											MaxItems: 1,
+											Elem: &schema.Resource{
+												Schema: map[string]*schema.Schema{
+													"default_prefix": {
+														Type:         schema.TypeString,
+														Required:     true,
+														ValidateFunc: validation.StringInSlice(appmesh.DefaultGatewayRouteRewrite_Values(), false),
+													},
+													"value": {
+														Type:         schema.TypeString,
+														Optional:     true,
+														ValidateFunc: validation.StringLenBetween(1, 255),
+													},
+												},
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+
+				"match": {
+					Type:     schema.TypeList,
+					Required: true,
+					MinItems: 1,
+					MaxItems: 1,
+					Elem: &schema.Resource{
+						Schema: map[string]*schema.Schema{
+							"prefix": {
+								Type:         schema.TypeString,
+								Required:     true,
+								ValidateFunc: validation.StringMatch(regexp.MustCompile(`^/`), "must start with /"),
+							},
+						},
+					},
+				},
+			},
+		},
+		ExactlyOneOf: []string{
+			"spec.0.grpc_route",
+			"spec.0.http2_route",
+			"spec.0.http_route",
+		},
+	}
+}
+
 func ResourceGatewayRoute() *schema.Resource {
 	return &schema.Resource{
 		Create: resourceGatewayRouteCreate,
@@ -105,6 +234,31 @@ func ResourceGatewayRoute() *schema.Resource {
 														},
 													},
 												},
+												"rewrite": {
+													Type:     schema.TypeList,
+													Optional: true,
+													MinItems: 0,
+													MaxItems: 1,
+													Elem: &schema.Resource{
+														Schema: map[string]*schema.Schema{
+															"hostname": {
+																Type:     schema.TypeList,
+																Optional: true,
+																MinItems: 0,
+																MaxItems: 1,
+																Elem: &schema.Resource{
+																	Schema: map[string]*schema.Schema{
+																		"default_target_hostname": {
+																			Type:         schema.TypeString,
+																			Optional:     true,
+																			ValidateFunc: validation.StringInSlice(appmesh.DefaultGatewayRouteRewrite_Values(), false),
+																		},
+																	},
+																},
+															},
+														},
+													},
+												},
 											},
 										},
 									},
@@ -132,139 +286,9 @@ func ResourceGatewayRoute() *schema.Resource {
 							},
 						},
 
-						"http2_route": {
-							Type:     schema.TypeList,
-							Optional: true,
-							MinItems: 0,
-							MaxItems: 1,
-							Elem: &schema.Resource{
-								Schema: map[string]*schema.Schema{
-									"action": {
-										Type:     schema.TypeList,
-										Required: true,
-										MinItems: 1,
-										MaxItems: 1,
-										Elem: &schema.Resource{
-											Schema: map[string]*schema.Schema{
-												"target": {
-													Type:     schema.TypeList,
-													Required: true,
-													MinItems: 1,
-													MaxItems: 1,
-													Elem: &schema.Resource{
-														Schema: map[string]*schema.Schema{
-															"virtual_service": {
-																Type:     schema.TypeList,
-																Required: true,
-																MinItems: 1,
-																MaxItems: 1,
-																Elem: &schema.Resource{
-																	Schema: map[string]*schema.Schema{
-																		"virtual_service_name": {
-																			Type:         schema.TypeString,
-																			Required:     true,
-																			ValidateFunc: validation.StringLenBetween(1, 255),
-																		},
-																	},
-																},
-															},
-														},
-													},
-												},
-											},
-										},
-									},
+						"http2_route": HttpGatewayRouteSchema(),
 
-									"match": {
-										Type:     schema.TypeList,
-										Required: true,
-										MinItems: 1,
-										MaxItems: 1,
-										Elem: &schema.Resource{
-											Schema: map[string]*schema.Schema{
-												"prefix": {
-													Type:         schema.TypeString,
-													Required:     true,
-													ValidateFunc: validation.StringMatch(regexp.MustCompile(`^/`), "must start with /"),
-												},
-											},
-										},
-									},
-								},
-							},
-							ExactlyOneOf: []string{
-								"spec.0.grpc_route",
-								"spec.0.http2_route",
-								"spec.0.http_route",
-							},
-						},
-
-						"http_route": {
-							Type:     schema.TypeList,
-							Optional: true,
-							MinItems: 0,
-							MaxItems: 1,
-							Elem: &schema.Resource{
-								Schema: map[string]*schema.Schema{
-									"action": {
-										Type:     schema.TypeList,
-										Required: true,
-										MinItems: 1,
-										MaxItems: 1,
-										Elem: &schema.Resource{
-											Schema: map[string]*schema.Schema{
-												"target": {
-													Type:     schema.TypeList,
-													Required: true,
-													MinItems: 1,
-													MaxItems: 1,
-													Elem: &schema.Resource{
-														Schema: map[string]*schema.Schema{
-															"virtual_service": {
-																Type:     schema.TypeList,
-																Required: true,
-																MinItems: 1,
-																MaxItems: 1,
-																Elem: &schema.Resource{
-																	Schema: map[string]*schema.Schema{
-																		"virtual_service_name": {
-																			Type:         schema.TypeString,
-																			Required:     true,
-																			ValidateFunc: validation.StringLenBetween(1, 255),
-																		},
-																	},
-																},
-															},
-														},
-													},
-												},
-											},
-										},
-									},
-
-									"match": {
-										Type:     schema.TypeList,
-										Required: true,
-										MinItems: 1,
-										MaxItems: 1,
-										Elem: &schema.Resource{
-											Schema: map[string]*schema.Schema{
-												"prefix": {
-													Type:         schema.TypeString,
-													Required:     true,
-													ValidateFunc: validation.StringMatch(regexp.MustCompile(`^/`), "must start with /"),
-												},
-											},
-										},
-									},
-								},
-							},
-							ExactlyOneOf: []string{
-								"spec.0.grpc_route",
-								"spec.0.http2_route",
-								"spec.0.http_route",
-							},
-						},
+						"http_route": HttpGatewayRouteSchema(),
 					},
 				},
 			},
@@ -547,6 +571,82 @@ func expandAppmeshGatewayRouteTarget(vRouteTarget []interface{}) *appmesh.Gatewa
 	return routeTarget
 }
 
+func expandAppmeshHttpGatewayRouteRewrite(vRouteRewrite []interface{}) *appmesh.HttpGatewayRouteRewrite {
+	if len(vRouteRewrite) == 0 || vRouteRewrite[0] == nil {
+		return nil
+	}
+
+	routeRewrite := &appmesh.HttpGatewayRouteRewrite{}
+
+	mRouteRewrite := vRouteRewrite[0].(map[string]interface{})
+
+	if vPath, ok := mRouteRewrite["hostname"].([]interface{}); ok && len(vPath) > 0 && vPath[0] != nil {
+		pathRewrite := &appmesh.HttpGatewayRoutePathRewrite{}
+
+		mPathRewrite := vPath[0].(map[string]interface{})
+
+		if vPathRewrite, ok := mPathRewrite["exact"].(string); ok && vPathRewrite != "" {
+			pathRewrite.Exact = aws.String(vPathRewrite)
+		}
+
+		routeRewrite.Path = pathRewrite
+	}
+
+	if vPrefix, ok := mRouteRewrite["prefix"].([]interface{}); ok && len(vPrefix) > 0 && vPrefix[0] != nil {
+		prefixRewrite := &appmesh.HttpGatewayRoutePrefixRewrite{}
+
+		mPrefixRewrite := vPrefix[0].(map[string]interface{})
+
+		if vDefaultPrefix, ok := mPrefixRewrite["default_prefix"].(string); ok && vDefaultPrefix != "" {
+			prefixRewrite.DefaultPrefix = aws.String(vDefaultPrefix)
+		}
+
+		if vValue, ok := mPrefixRewrite["value"].(string); ok && vValue != "" {
+			prefixRewrite.Value = aws.String(vValue)
+		}
+
+		routeRewrite.Prefix = prefixRewrite
+	}
+
+	if vHostname, ok := mRouteRewrite["hostname"].([]interface{}); ok && len(vHostname) > 0 && vHostname[0] != nil {
+		hostnameRewrite := &appmesh.GatewayRouteHostnameRewrite{}
+
+		mHostnameRewrite := vHostname[0].(map[string]interface{})
+
+		if vHostnameRewrite, ok := mHostnameRewrite["default_target_hostname"].(string); ok && vHostnameRewrite != "" {
+			hostnameRewrite.DefaultTargetHostname = aws.String(vHostnameRewrite)
+		}
+
+		routeRewrite.Hostname = hostnameRewrite
+	}
+
+	return routeRewrite
+}
+
+func expandAppmeshGrpcGatewayRouteRewrite(vRouteRewrite []interface{}) *appmesh.GrpcGatewayRouteRewrite {
+	if len(vRouteRewrite) == 0 || vRouteRewrite[0] == nil {
+		return nil
+	}
+
+	routeRewrite := &appmesh.GrpcGatewayRouteRewrite{}
+
+	mRouteRewrite := vRouteRewrite[0].(map[string]interface{})
+
+	if vHostname, ok := mRouteRewrite["hostname"].([]interface{}); ok && len(vHostname) > 0 && vHostname[0] != nil {
+		hostnameRewrite := &appmesh.GatewayRouteHostnameRewrite{}
+
+		mHostnameRewrite := vHostname[0].(map[string]interface{})
+
+		if vHostnameRewrite, ok := mHostnameRewrite["default_target_hostname"].(string); ok && vHostnameRewrite != "" {
+			hostnameRewrite.DefaultTargetHostname = aws.String(vHostnameRewrite)
+		}
+
+		routeRewrite.Hostname = hostnameRewrite
+	}
+
+	return routeRewrite
+}
+
 func expandAppmeshGrpcGatewayRoute(vGrpcRoute []interface{}) *appmesh.GrpcGatewayRoute {
 	if len(vGrpcRoute) == 0 || vGrpcRoute[0] == nil {
 		return nil
@@ -563,6 +663,10 @@ func expandAppmeshGrpcGatewayRoute(vGrpcRoute []interface{}) *appmesh.GrpcGatewa
 
 		if vRouteTarget, ok := mRouteAction["target"].([]interface{}); ok {
 			routeAction.Target = expandAppmeshGatewayRouteTarget(vRouteTarget)
+		}
+
+		if vRouteRewrite, ok := mRouteAction["rewrite"].([]interface{}); ok {
+			routeAction.Rewrite = expandAppmeshGrpcGatewayRouteRewrite(vRouteRewrite)
 		}
 
 		route.Action = routeAction
@@ -599,6 +703,10 @@ func expandAppmeshHttpGatewayRoute(vHttpRoute []interface{}) *appmesh.HttpGatewa
 
 		if vRouteTarget, ok := mRouteAction["target"].([]interface{}); ok {
 			routeAction.Target = expandAppmeshGatewayRouteTarget(vRouteTarget)
+		}
+
+		if vRouteRewrite, ok := mRouteAction["rewrite"].([]interface{}); ok {
+			routeAction.Rewrite = expandAppmeshHttpGatewayRouteRewrite(vRouteRewrite)
 		}
 
 		route.Action = routeAction
@@ -651,6 +759,59 @@ func flattenAppmeshGatewayRouteTarget(routeTarget *appmesh.GatewayRouteTarget) [
 	return []interface{}{mRouteTarget}
 }
 
+func flattenAppmeshGatewayHttpRouteTarget(routeRewrite *appmesh.HttpGatewayRouteRewrite) []interface{} {
+	if routeRewrite == nil {
+		return []interface{}{}
+	}
+
+	mRouteRewrite := map[string]interface{}{}
+
+	if hostnameRewrite := routeRewrite.Hostname; hostnameRewrite != nil {
+		mVirtualService := map[string]interface{}{
+			"default_target_hostname": aws.StringValue(hostnameRewrite.DefaultTargetHostname),
+		}
+
+		mRouteRewrite["hostname"] = []interface{}{mVirtualService}
+	}
+
+	if pathRewrite := routeRewrite.Path; pathRewrite != nil {
+		mVirtualService := map[string]interface{}{
+			"exact": aws.StringValue(pathRewrite.Exact),
+		}
+
+		mRouteRewrite["path"] = []interface{}{mVirtualService}
+	}
+
+	if prefixRewrite := routeRewrite.Prefix; prefixRewrite != nil {
+		mVirtualService := map[string]interface{}{
+			"value":          aws.StringValue(prefixRewrite.Value),
+			"default_prefix": aws.StringValue(prefixRewrite.DefaultPrefix),
+		}
+
+		mRouteRewrite["prefix"] = []interface{}{mVirtualService}
+	}
+
+	return []interface{}{mRouteRewrite}
+}
+
+func flattenAppmeshGatewayGrpcRouteTarget(routeRewrite *appmesh.GrpcGatewayRouteRewrite) []interface{} {
+	if routeRewrite == nil {
+		return []interface{}{}
+	}
+
+	mRouteRewrite := map[string]interface{}{}
+
+	if hostnameRewrite := routeRewrite.Hostname; hostnameRewrite != nil {
+		mVirtualService := map[string]interface{}{
+			"default_target_hostname": aws.StringValue(hostnameRewrite.DefaultTargetHostname),
+		}
+
+		mRouteRewrite["hostname"] = []interface{}{mVirtualService}
+	}
+
+	return []interface{}{mRouteRewrite}
+}
+
 func flattenAppmeshGrpcGatewayRoute(grpcRoute *appmesh.GrpcGatewayRoute) []interface{} {
 	if grpcRoute == nil {
 		return []interface{}{}
@@ -660,7 +821,8 @@ func flattenAppmeshGrpcGatewayRoute(grpcRoute *appmesh.GrpcGatewayRoute) []inter
 
 	if routeAction := grpcRoute.Action; routeAction != nil {
 		mRouteAction := map[string]interface{}{
-			"target": flattenAppmeshGatewayRouteTarget(routeAction.Target),
+			"target":  flattenAppmeshGatewayRouteTarget(routeAction.Target),
+			"rewrite": flattenAppmeshGatewayGrpcRouteTarget(routeAction.Rewrite),
 		}
 
 		mGrpcRoute["action"] = []interface{}{mRouteAction}
@@ -686,7 +848,8 @@ func flattenAppmeshHttpGatewayRoute(httpRoute *appmesh.HttpGatewayRoute) []inter
 
 	if routeAction := httpRoute.Action; routeAction != nil {
 		mRouteAction := map[string]interface{}{
-			"target": flattenAppmeshGatewayRouteTarget(routeAction.Target),
+			"target":  flattenAppmeshGatewayRouteTarget(routeAction.Target),
+			"rewrite": flattenAppmeshGatewayHttpRouteTarget(routeAction.Rewrite),
 		}
 
 		mHttpRoute["action"] = []interface{}{mRouteAction}

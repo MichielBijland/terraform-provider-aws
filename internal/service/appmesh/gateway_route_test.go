@@ -115,6 +115,7 @@ func testAccGatewayRoute_GRPCRoute(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "spec.0.grpc_route.0.action.0.target.#", "1"),
 					resource.TestCheckResourceAttr(resourceName, "spec.0.grpc_route.0.action.0.target.0.virtual_service.#", "1"),
 					resource.TestCheckResourceAttrPair(resourceName, "spec.0.grpc_route.0.action.0.target.0.virtual_service.0.virtual_service_name", vs1ResourceName, "name"),
+					resource.TestCheckResourceAttr(resourceName, "spec.0.grpc_route.0.action.0.rewrite.#", "0"),
 					resource.TestCheckResourceAttr(resourceName, "spec.0.grpc_route.0.match.#", "1"),
 					resource.TestCheckResourceAttr(resourceName, "spec.0.grpc_route.0.match.0.service_name", "test1"),
 					resource.TestCheckResourceAttr(resourceName, "spec.0.http2_route.#", "0"),
@@ -139,6 +140,86 @@ func testAccGatewayRoute_GRPCRoute(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "spec.0.grpc_route.0.action.0.target.#", "1"),
 					resource.TestCheckResourceAttr(resourceName, "spec.0.grpc_route.0.action.0.target.0.virtual_service.#", "1"),
 					resource.TestCheckResourceAttrPair(resourceName, "spec.0.grpc_route.0.action.0.target.0.virtual_service.0.virtual_service_name", vs2ResourceName, "name"),
+					resource.TestCheckResourceAttr(resourceName, "spec.0.grpc_route.0.action.0.rewrite.#", "0"),
+					resource.TestCheckResourceAttr(resourceName, "spec.0.grpc_route.0.match.#", "1"),
+					resource.TestCheckResourceAttr(resourceName, "spec.0.grpc_route.0.match.0.service_name", "test2"),
+					resource.TestCheckResourceAttr(resourceName, "spec.0.http2_route.#", "0"),
+					resource.TestCheckResourceAttr(resourceName, "spec.0.http_route.#", "0"),
+					resource.TestCheckResourceAttr(resourceName, "virtual_gateway_name", vgName),
+					resource.TestCheckResourceAttrSet(resourceName, "created_date"),
+					resource.TestCheckResourceAttrSet(resourceName, "last_updated_date"),
+					acctest.CheckResourceAttrAccountID(resourceName, "resource_owner"),
+					acctest.CheckResourceAttrRegionalARN(resourceName, "arn", "appmesh", fmt.Sprintf("mesh/%s/virtualGateway/%s/gatewayRoute/%s", meshName, vgName, grName)),
+				),
+			},
+			{
+				ResourceName:      resourceName,
+				ImportStateIdFunc: testAccGatewayRouteImportStateIdFunc(resourceName),
+				ImportState:       true,
+				ImportStateVerify: true,
+			},
+		},
+	})
+}
+
+func testAccGatewayRoute_GRPCRouteRewrite(t *testing.T) {
+	var v appmesh.GatewayRouteData
+	resourceName := "aws_appmesh_gateway_route.test"
+	vs1ResourceName := "aws_appmesh_virtual_service.test.0"
+	vs2ResourceName := "aws_appmesh_virtual_service.test.1"
+	meshName := sdkacctest.RandomWithPrefix(acctest.ResourcePrefix)
+	vgName := sdkacctest.RandomWithPrefix(acctest.ResourcePrefix)
+	grName := sdkacctest.RandomWithPrefix(acctest.ResourcePrefix)
+
+	resource.Test(t, resource.TestCase{
+		PreCheck:     func() { acctest.PreCheck(t); acctest.PreCheckPartitionHasService(appmesh.EndpointsID, t) },
+		ErrorCheck:   acctest.ErrorCheck(t, appmesh.EndpointsID),
+		Providers:    acctest.Providers,
+		CheckDestroy: testAccCheckAppmeshGatewayRouteDestroy,
+		Steps: []resource.TestStep{
+			{
+				Config: testAccAppmeshGatewayRouteConfigGrpcRouteRewrite(meshName, vgName, grName),
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckAppmeshGatewayRouteExists(resourceName, &v),
+					resource.TestCheckResourceAttr(resourceName, "mesh_name", meshName),
+					acctest.CheckResourceAttrAccountID(resourceName, "mesh_owner"),
+					resource.TestCheckResourceAttr(resourceName, "name", grName),
+					resource.TestCheckResourceAttr(resourceName, "spec.#", "1"),
+					resource.TestCheckResourceAttr(resourceName, "spec.0.grpc_route.#", "1"),
+					resource.TestCheckResourceAttr(resourceName, "spec.0.grpc_route.0.action.#", "1"),
+					resource.TestCheckResourceAttr(resourceName, "spec.0.grpc_route.0.action.0.target.#", "1"),
+					resource.TestCheckResourceAttr(resourceName, "spec.0.grpc_route.0.action.0.target.0.virtual_service.#", "1"),
+					resource.TestCheckResourceAttrPair(resourceName, "spec.0.grpc_route.0.action.0.target.0.virtual_service.0.virtual_service_name", vs1ResourceName, "name"),
+					resource.TestCheckResourceAttr(resourceName, "spec.0.grpc_route.0.action.0.rewrite.#", "1"),
+					resource.TestCheckResourceAttr(resourceName, "spec.0.http_route.0.action.0.rewrite.0.hostname.#", "1"),
+					resource.TestCheckResourceAttr(resourceName, "spec.0.http_route.0.action.0.rewrite.0.hostname.0.default_target_hostname", "ENABLED"),
+					resource.TestCheckResourceAttr(resourceName, "spec.0.grpc_route.0.match.#", "1"),
+					resource.TestCheckResourceAttr(resourceName, "spec.0.grpc_route.0.match.0.service_name", "test1"),
+					resource.TestCheckResourceAttr(resourceName, "spec.0.http2_route.#", "0"),
+					resource.TestCheckResourceAttr(resourceName, "spec.0.http_route.#", "0"),
+					resource.TestCheckResourceAttr(resourceName, "virtual_gateway_name", vgName),
+					resource.TestCheckResourceAttrSet(resourceName, "created_date"),
+					resource.TestCheckResourceAttrSet(resourceName, "last_updated_date"),
+					acctest.CheckResourceAttrAccountID(resourceName, "resource_owner"),
+					acctest.CheckResourceAttrRegionalARN(resourceName, "arn", "appmesh", fmt.Sprintf("mesh/%s/virtualGateway/%s/gatewayRoute/%s", meshName, vgName, grName)),
+				),
+			},
+			{
+				Config: testAccAppmeshGatewayRouteConfigGrpcRouteUpdatedRewrite(meshName, vgName, grName),
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckAppmeshGatewayRouteExists(resourceName, &v),
+					resource.TestCheckResourceAttr(resourceName, "mesh_name", meshName),
+					acctest.CheckResourceAttrAccountID(resourceName, "mesh_owner"),
+					resource.TestCheckResourceAttr(resourceName, "name", grName),
+					resource.TestCheckResourceAttr(resourceName, "spec.#", "1"),
+					resource.TestCheckResourceAttr(resourceName, "spec.0.grpc_route.#", "1"),
+					resource.TestCheckResourceAttr(resourceName, "spec.0.grpc_route.0.action.#", "1"),
+					resource.TestCheckResourceAttr(resourceName, "spec.0.grpc_route.0.action.0.target.#", "1"),
+					resource.TestCheckResourceAttr(resourceName, "spec.0.grpc_route.0.action.0.target.0.virtual_service.#", "1"),
+					resource.TestCheckResourceAttrPair(resourceName, "spec.0.grpc_route.0.action.0.target.0.virtual_service.0.virtual_service_name", vs2ResourceName, "name"),
+					resource.TestCheckResourceAttr(resourceName, "spec.0.grpc_route.0.action.0.rewrite.#", "1"),
+					resource.TestCheckResourceAttr(resourceName, "spec.0.http_route.0.action.0.rewrite.0.hostname.#", "1"),
+					resource.TestCheckResourceAttr(resourceName, "spec.0.http_route.0.action.0.rewrite.0.hostname.0.default_target_hostname", "DISABLED"),
 					resource.TestCheckResourceAttr(resourceName, "spec.0.grpc_route.0.match.#", "1"),
 					resource.TestCheckResourceAttr(resourceName, "spec.0.grpc_route.0.match.0.service_name", "test2"),
 					resource.TestCheckResourceAttr(resourceName, "spec.0.http2_route.#", "0"),
@@ -190,6 +271,7 @@ func testAccGatewayRoute_HTTPRoute(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "spec.0.http_route.0.action.0.target.#", "1"),
 					resource.TestCheckResourceAttr(resourceName, "spec.0.http_route.0.action.0.target.0.virtual_service.#", "1"),
 					resource.TestCheckResourceAttrPair(resourceName, "spec.0.http_route.0.action.0.target.0.virtual_service.0.virtual_service_name", vs1ResourceName, "name"),
+					resource.TestCheckResourceAttr(resourceName, "spec.0.http_route.0.action.0.rewrite.#", "0"),
 					resource.TestCheckResourceAttr(resourceName, "spec.0.http_route.0.match.#", "1"),
 					resource.TestCheckResourceAttr(resourceName, "spec.0.http_route.0.match.0.prefix", "/"),
 					resource.TestCheckResourceAttr(resourceName, "virtual_gateway_name", vgName),
@@ -214,6 +296,93 @@ func testAccGatewayRoute_HTTPRoute(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "spec.0.http_route.0.action.0.target.#", "1"),
 					resource.TestCheckResourceAttr(resourceName, "spec.0.http_route.0.action.0.target.0.virtual_service.#", "1"),
 					resource.TestCheckResourceAttrPair(resourceName, "spec.0.http_route.0.action.0.target.0.virtual_service.0.virtual_service_name", vs2ResourceName, "name"),
+					resource.TestCheckResourceAttr(resourceName, "spec.0.http_route.0.action.0.rewrite.#", "0"),
+					resource.TestCheckResourceAttr(resourceName, "spec.0.http_route.0.match.#", "1"),
+					resource.TestCheckResourceAttr(resourceName, "spec.0.http_route.0.match.0.prefix", "/users"),
+					resource.TestCheckResourceAttr(resourceName, "virtual_gateway_name", vgName),
+					resource.TestCheckResourceAttrSet(resourceName, "created_date"),
+					resource.TestCheckResourceAttrSet(resourceName, "last_updated_date"),
+					acctest.CheckResourceAttrAccountID(resourceName, "resource_owner"),
+					acctest.CheckResourceAttrRegionalARN(resourceName, "arn", "appmesh", fmt.Sprintf("mesh/%s/virtualGateway/%s/gatewayRoute/%s", meshName, vgName, grName)),
+				),
+			},
+			{
+				ResourceName:      resourceName,
+				ImportStateIdFunc: testAccGatewayRouteImportStateIdFunc(resourceName),
+				ImportState:       true,
+				ImportStateVerify: true,
+			},
+		},
+	})
+}
+
+func testAccGatewayRoute_HTTPRouteRewrite(t *testing.T) {
+	var v appmesh.GatewayRouteData
+	resourceName := "aws_appmesh_gateway_route.test"
+	vs1ResourceName := "aws_appmesh_virtual_service.test.0"
+	vs2ResourceName := "aws_appmesh_virtual_service.test.1"
+	meshName := sdkacctest.RandomWithPrefix(acctest.ResourcePrefix)
+	vgName := sdkacctest.RandomWithPrefix(acctest.ResourcePrefix)
+	grName := sdkacctest.RandomWithPrefix(acctest.ResourcePrefix)
+
+	resource.Test(t, resource.TestCase{
+		PreCheck:     func() { acctest.PreCheck(t); acctest.PreCheckPartitionHasService(appmesh.EndpointsID, t) },
+		ErrorCheck:   acctest.ErrorCheck(t, appmesh.EndpointsID),
+		Providers:    acctest.Providers,
+		CheckDestroy: testAccCheckAppmeshGatewayRouteDestroy,
+		Steps: []resource.TestStep{
+			{
+				Config: testAccAppmeshGatewayRouteConfigHttpRouteRewrite(meshName, vgName, grName),
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckAppmeshGatewayRouteExists(resourceName, &v),
+					resource.TestCheckResourceAttr(resourceName, "mesh_name", meshName),
+					acctest.CheckResourceAttrAccountID(resourceName, "mesh_owner"),
+					resource.TestCheckResourceAttr(resourceName, "name", grName),
+					resource.TestCheckResourceAttr(resourceName, "spec.#", "1"),
+					resource.TestCheckResourceAttr(resourceName, "spec.0.grpc_route.#", "0"),
+					resource.TestCheckResourceAttr(resourceName, "spec.0.http2_route.#", "0"),
+					resource.TestCheckResourceAttr(resourceName, "spec.0.http_route.#", "1"),
+					resource.TestCheckResourceAttr(resourceName, "spec.0.http_route.0.action.#", "1"),
+					resource.TestCheckResourceAttr(resourceName, "spec.0.http_route.0.action.0.target.#", "1"),
+					resource.TestCheckResourceAttr(resourceName, "spec.0.http_route.0.action.0.target.0.virtual_service.#", "1"),
+					resource.TestCheckResourceAttrPair(resourceName, "spec.0.http_route.0.action.0.target.0.virtual_service.0.virtual_service_name", vs1ResourceName, "name"),
+					resource.TestCheckResourceAttr(resourceName, "spec.0.http_route.0.action.0.rewrite.#", "1"),
+					resource.TestCheckResourceAttr(resourceName, "spec.0.http_route.0.action.0.rewrite.0.prefix.#", "1"),
+					resource.TestCheckResourceAttr(resourceName, "spec.0.http_route.0.action.0.rewrite.0.prefix.0.default_prefix", "ENABLED"),
+					resource.TestCheckResourceAttr(resourceName, "spec.0.http_route.0.action.0.rewrite.0.hostname.#", "1"),
+					resource.TestCheckResourceAttr(resourceName, "spec.0.http_route.0.action.0.rewrite.0.hostname.0.default_target_hostname", "ENABLED"),
+					resource.TestCheckResourceAttr(resourceName, "spec.0.http_route.0.action.0.rewrite.0.path.#", "0"),
+					resource.TestCheckResourceAttr(resourceName, "spec.0.http_route.0.match.#", "1"),
+					resource.TestCheckResourceAttr(resourceName, "spec.0.http_route.0.match.0.prefix", "/"),
+					resource.TestCheckResourceAttr(resourceName, "virtual_gateway_name", vgName),
+					resource.TestCheckResourceAttrSet(resourceName, "created_date"),
+					resource.TestCheckResourceAttrSet(resourceName, "last_updated_date"),
+					acctest.CheckResourceAttrAccountID(resourceName, "resource_owner"),
+					acctest.CheckResourceAttrRegionalARN(resourceName, "arn", "appmesh", fmt.Sprintf("mesh/%s/virtualGateway/%s/gatewayRoute/%s", meshName, vgName, grName)),
+				),
+			},
+			{
+				Config: testAccAppmeshGatewayRouteConfigHttpRouteUpdatedRewrite(meshName, vgName, grName),
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckAppmeshGatewayRouteExists(resourceName, &v),
+					resource.TestCheckResourceAttr(resourceName, "mesh_name", meshName),
+					acctest.CheckResourceAttrAccountID(resourceName, "mesh_owner"),
+					resource.TestCheckResourceAttr(resourceName, "name", grName),
+					resource.TestCheckResourceAttr(resourceName, "spec.#", "1"),
+					resource.TestCheckResourceAttr(resourceName, "spec.0.grpc_route.#", "0"),
+					resource.TestCheckResourceAttr(resourceName, "spec.0.http2_route.#", "0"),
+					resource.TestCheckResourceAttr(resourceName, "spec.0.http_route.#", "1"),
+					resource.TestCheckResourceAttr(resourceName, "spec.0.http_route.0.action.#", "1"),
+					resource.TestCheckResourceAttr(resourceName, "spec.0.http_route.0.action.0.target.#", "1"),
+					resource.TestCheckResourceAttr(resourceName, "spec.0.http_route.0.action.0.target.0.virtual_service.#", "1"),
+					resource.TestCheckResourceAttrPair(resourceName, "spec.0.http_route.0.action.0.target.0.virtual_service.0.virtual_service_name", vs2ResourceName, "name"),
+					resource.TestCheckResourceAttr(resourceName, "spec.0.http_route.0.action.0.rewrite.#", "1"),
+					resource.TestCheckResourceAttr(resourceName, "spec.0.http_route.0.action.0.rewrite.0.prefix.#", "1"),
+					resource.TestCheckResourceAttr(resourceName, "spec.0.http_route.0.action.0.rewrite.0.prefix.0.default_prefix", "DISABLED"),
+					resource.TestCheckResourceAttr(resourceName, "spec.0.http_route.0.action.0.rewrite.0.hostname.#", "1"),
+					resource.TestCheckResourceAttr(resourceName, "spec.0.http_route.0.action.0.rewrite.0.hostname.0.default_target_hostname", "DISABLED"),
+					resource.TestCheckResourceAttr(resourceName, "spec.0.http_route.0.action.0.rewrite.0.path.#", "1"),
+					resource.TestCheckResourceAttr(resourceName, "spec.0.http_route.0.action.0.rewrite.0.path.0.exact", "/users"),
 					resource.TestCheckResourceAttr(resourceName, "spec.0.http_route.0.match.#", "1"),
 					resource.TestCheckResourceAttr(resourceName, "spec.0.http_route.0.match.0.prefix", "/users"),
 					resource.TestCheckResourceAttr(resourceName, "virtual_gateway_name", vgName),
@@ -262,6 +431,7 @@ func testAccGatewayRoute_HTTP2Route(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "spec.0.http2_route.0.action.0.target.#", "1"),
 					resource.TestCheckResourceAttr(resourceName, "spec.0.http2_route.0.action.0.target.0.virtual_service.#", "1"),
 					resource.TestCheckResourceAttrPair(resourceName, "spec.0.http2_route.0.action.0.target.0.virtual_service.0.virtual_service_name", vs1ResourceName, "name"),
+					resource.TestCheckResourceAttr(resourceName, "spec.0.http2_route.0.action.0.rewrite.#", "0"),
 					resource.TestCheckResourceAttr(resourceName, "spec.0.http2_route.0.match.#", "1"),
 					resource.TestCheckResourceAttr(resourceName, "spec.0.http2_route.0.match.0.prefix", "/"),
 					resource.TestCheckResourceAttr(resourceName, "spec.0.http_route.#", "0"),
@@ -286,6 +456,82 @@ func testAccGatewayRoute_HTTP2Route(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "spec.0.http2_route.0.action.0.target.#", "1"),
 					resource.TestCheckResourceAttr(resourceName, "spec.0.http2_route.0.action.0.target.0.virtual_service.#", "1"),
 					resource.TestCheckResourceAttrPair(resourceName, "spec.0.http2_route.0.action.0.target.0.virtual_service.0.virtual_service_name", vs2ResourceName, "name"),
+					resource.TestCheckResourceAttr(resourceName, "spec.0.http2_route.0.action.0.rewrite.#", "0"),
+					resource.TestCheckResourceAttr(resourceName, "spec.0.http2_route.0.match.#", "1"),
+					resource.TestCheckResourceAttr(resourceName, "spec.0.http2_route.0.match.0.prefix", "/users"),
+					resource.TestCheckResourceAttr(resourceName, "spec.0.http_route.#", "0"),
+					resource.TestCheckResourceAttr(resourceName, "virtual_gateway_name", vgName),
+					resource.TestCheckResourceAttrSet(resourceName, "created_date"),
+					resource.TestCheckResourceAttrSet(resourceName, "last_updated_date"),
+					acctest.CheckResourceAttrAccountID(resourceName, "resource_owner"),
+					acctest.CheckResourceAttrRegionalARN(resourceName, "arn", "appmesh", fmt.Sprintf("mesh/%s/virtualGateway/%s/gatewayRoute/%s", meshName, vgName, grName)),
+				),
+			},
+			{
+				ResourceName:      resourceName,
+				ImportStateIdFunc: testAccGatewayRouteImportStateIdFunc(resourceName),
+				ImportState:       true,
+				ImportStateVerify: true,
+			},
+		},
+	})
+}
+
+func testAccGatewayRoute_HTTP2RouteRewrite(t *testing.T) {
+	var v appmesh.GatewayRouteData
+	resourceName := "aws_appmesh_gateway_route.test"
+	vs1ResourceName := "aws_appmesh_virtual_service.test.0"
+	vs2ResourceName := "aws_appmesh_virtual_service.test.1"
+	meshName := sdkacctest.RandomWithPrefix(acctest.ResourcePrefix)
+	vgName := sdkacctest.RandomWithPrefix(acctest.ResourcePrefix)
+	grName := sdkacctest.RandomWithPrefix(acctest.ResourcePrefix)
+
+	resource.Test(t, resource.TestCase{
+		PreCheck:     func() { acctest.PreCheck(t); acctest.PreCheckPartitionHasService(appmesh.EndpointsID, t) },
+		ErrorCheck:   acctest.ErrorCheck(t, appmesh.EndpointsID),
+		Providers:    acctest.Providers,
+		CheckDestroy: testAccCheckAppmeshGatewayRouteDestroy,
+		Steps: []resource.TestStep{
+			{
+				Config: testAccAppmeshGatewayRouteConfigHttp2RouteRewrite(meshName, vgName, grName),
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckAppmeshGatewayRouteExists(resourceName, &v),
+					resource.TestCheckResourceAttr(resourceName, "mesh_name", meshName),
+					acctest.CheckResourceAttrAccountID(resourceName, "mesh_owner"),
+					resource.TestCheckResourceAttr(resourceName, "name", grName),
+					resource.TestCheckResourceAttr(resourceName, "spec.#", "1"),
+					resource.TestCheckResourceAttr(resourceName, "spec.0.grpc_route.#", "0"),
+					resource.TestCheckResourceAttr(resourceName, "spec.0.http2_route.#", "1"),
+					resource.TestCheckResourceAttr(resourceName, "spec.0.http2_route.0.action.#", "1"),
+					resource.TestCheckResourceAttr(resourceName, "spec.0.http2_route.0.action.0.target.#", "1"),
+					resource.TestCheckResourceAttr(resourceName, "spec.0.http2_route.0.action.0.target.0.virtual_service.#", "1"),
+					resource.TestCheckResourceAttrPair(resourceName, "spec.0.http2_route.0.action.0.target.0.virtual_service.0.virtual_service_name", vs1ResourceName, "name"),
+					resource.TestCheckResourceAttr(resourceName, "spec.0.http2_route.0.action.0.rewrite.#", "1"),
+					resource.TestCheckResourceAttr(resourceName, "spec.0.http2_route.0.match.#", "1"),
+					resource.TestCheckResourceAttr(resourceName, "spec.0.http2_route.0.match.0.prefix", "/"),
+					resource.TestCheckResourceAttr(resourceName, "spec.0.http_route.#", "0"),
+					resource.TestCheckResourceAttr(resourceName, "virtual_gateway_name", vgName),
+					resource.TestCheckResourceAttrSet(resourceName, "created_date"),
+					resource.TestCheckResourceAttrSet(resourceName, "last_updated_date"),
+					acctest.CheckResourceAttrAccountID(resourceName, "resource_owner"),
+					acctest.CheckResourceAttrRegionalARN(resourceName, "arn", "appmesh", fmt.Sprintf("mesh/%s/virtualGateway/%s/gatewayRoute/%s", meshName, vgName, grName)),
+				),
+			},
+			{
+				Config: testAccAppmeshGatewayRouteConfigHttp2RouteUpdatedRewrite(meshName, vgName, grName),
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckAppmeshGatewayRouteExists(resourceName, &v),
+					resource.TestCheckResourceAttr(resourceName, "mesh_name", meshName),
+					acctest.CheckResourceAttrAccountID(resourceName, "mesh_owner"),
+					resource.TestCheckResourceAttr(resourceName, "name", grName),
+					resource.TestCheckResourceAttr(resourceName, "spec.#", "1"),
+					resource.TestCheckResourceAttr(resourceName, "spec.0.grpc_route.#", "0"),
+					resource.TestCheckResourceAttr(resourceName, "spec.0.http2_route.#", "1"),
+					resource.TestCheckResourceAttr(resourceName, "spec.0.http2_route.0.action.#", "1"),
+					resource.TestCheckResourceAttr(resourceName, "spec.0.http2_route.0.action.0.target.#", "1"),
+					resource.TestCheckResourceAttr(resourceName, "spec.0.http2_route.0.action.0.target.0.virtual_service.#", "1"),
+					resource.TestCheckResourceAttrPair(resourceName, "spec.0.http2_route.0.action.0.target.0.virtual_service.0.virtual_service_name", vs2ResourceName, "name"),
+					resource.TestCheckResourceAttr(resourceName, "spec.0.http2_route.0.action.0.rewrite.#", "1"),
 					resource.TestCheckResourceAttr(resourceName, "spec.0.http2_route.0.match.#", "1"),
 					resource.TestCheckResourceAttr(resourceName, "spec.0.http2_route.0.match.0.prefix", "/users"),
 					resource.TestCheckResourceAttr(resourceName, "spec.0.http_route.#", "0"),
@@ -493,6 +739,68 @@ resource "aws_appmesh_gateway_route" "test" {
 `, grName))
 }
 
+func testAccAppmeshGatewayRouteConfigGrpcRouteRewrite(meshName, vgName, grName string) string {
+	return acctest.ConfigCompose(testAccAppmeshGatewayRouteConfigBase(meshName, vgName), fmt.Sprintf(`
+resource "aws_appmesh_gateway_route" "test" {
+  name                 = %[1]q
+  mesh_name            = aws_appmesh_mesh.test.name
+  virtual_gateway_name = aws_appmesh_virtual_gateway.test.name
+
+  spec {
+    grpc_route {
+      action {
+        target {
+          virtual_service {
+            virtual_service_name = aws_appmesh_virtual_service.test[0].name
+          }
+        }
+		rewrite {
+			hostname {
+				default_target_hostname = "ENABLED"
+			}
+		}
+      }
+
+      match {
+        service_name = "test1"
+      }
+    }
+  }
+}
+`, grName))
+}
+
+func testAccAppmeshGatewayRouteConfigGrpcRouteUpdatedRewrite(meshName, vgName, grName string) string {
+	return acctest.ConfigCompose(testAccAppmeshGatewayRouteConfigBase(meshName, vgName), fmt.Sprintf(`
+resource "aws_appmesh_gateway_route" "test" {
+  name                 = %[1]q
+  mesh_name            = aws_appmesh_mesh.test.name
+  virtual_gateway_name = aws_appmesh_virtual_gateway.test.name
+
+  spec {
+    grpc_route {
+      action {
+        target {
+          virtual_service {
+            virtual_service_name = aws_appmesh_virtual_service.test[1].name
+          }
+        }
+		rewrite {
+			hostname {
+				default_target_hostname = "DISABLED"
+			}
+		}
+      }
+
+      match {
+        service_name = "test2"
+      }
+    }
+  }
+}
+`, grName))
+}
+
 func testAccAppmeshGatewayRouteConfigHttpRoute(meshName, vgName, grName string) string {
 	return acctest.ConfigCompose(testAccAppmeshGatewayRouteConfigBase(meshName, vgName), fmt.Sprintf(`
 resource "aws_appmesh_gateway_route" "test" {
@@ -531,9 +839,80 @@ resource "aws_appmesh_gateway_route" "test" {
       action {
         target {
           virtual_service {
+            virtual_service_name = aws_appmesh_virtual_service.test[0].name
+          }
+        }
+      }
+
+      match {
+        prefix = "/"
+      }
+    }
+  }
+}
+`, grName))
+}
+
+func testAccAppmeshGatewayRouteConfigHttpRouteRewrite(meshName, vgName, grName string) string {
+	return acctest.ConfigCompose(testAccAppmeshGatewayRouteConfigBase(meshName, vgName), fmt.Sprintf(`
+resource "aws_appmesh_gateway_route" "test" {
+  name                 = %[1]q
+  mesh_name            = aws_appmesh_mesh.test.name
+  virtual_gateway_name = aws_appmesh_virtual_gateway.test.name
+
+  spec {
+    http_route {
+      action {
+        target {
+          virtual_service {
+            virtual_service_name = aws_appmesh_virtual_service.test[0].name
+          }
+        }
+		rewrite {
+			prefix {
+				default_prefix = "ENABLED"
+			}
+			hostname {
+				default_target_hostname = "ENABLED"
+			}
+		}
+      }
+
+      match {
+        prefix = "/"
+      }
+    }
+  }
+}
+`, grName))
+}
+
+func testAccAppmeshGatewayRouteConfigHttpRouteUpdatedRewrite(meshName, vgName, grName string) string {
+	return acctest.ConfigCompose(testAccAppmeshGatewayRouteConfigBase(meshName, vgName), fmt.Sprintf(`
+resource "aws_appmesh_gateway_route" "test" {
+  name                 = %[1]q
+  mesh_name            = aws_appmesh_mesh.test.name
+  virtual_gateway_name = aws_appmesh_virtual_gateway.test.name
+
+  spec {
+    http_route {
+      action {
+        target {
+          virtual_service {
             virtual_service_name = aws_appmesh_virtual_service.test[1].name
           }
         }
+		rewrite {
+			prefix {
+				default_prefix = "DISABLED"
+			}
+			path {
+				exact = "/users"
+			}
+			hostname {
+				default_target_hostname = "DISABLED"
+			}
+		}
       }
 
       match {
@@ -586,6 +965,77 @@ resource "aws_appmesh_gateway_route" "test" {
             virtual_service_name = aws_appmesh_virtual_service.test[1].name
           }
         }
+      }
+
+      match {
+        prefix = "/users"
+      }
+    }
+  }
+}
+`, grName))
+}
+
+func testAccAppmeshGatewayRouteConfigHttp2RouteRewrite(meshName, vgName, grName string) string {
+	return acctest.ConfigCompose(testAccAppmeshGatewayRouteConfigBase(meshName, vgName), fmt.Sprintf(`
+resource "aws_appmesh_gateway_route" "test" {
+  name                 = %[1]q
+  mesh_name            = aws_appmesh_mesh.test.name
+  virtual_gateway_name = aws_appmesh_virtual_gateway.test.name
+
+  spec {
+    http2_route {
+      action {
+        target {
+          virtual_service {
+            virtual_service_name = aws_appmesh_virtual_service.test[0].name
+          }
+        }
+		rewrite {
+			prefix {
+				default_prefix = "ENABLED"
+			}
+			hostname {
+				default_target_hostname = "ENABLED"
+			}
+		}
+      }
+
+      match {
+        prefix = "/"
+      }
+    }
+  }
+}
+`, grName))
+}
+
+func testAccAppmeshGatewayRouteConfigHttp2RouteUpdatedRewrite(meshName, vgName, grName string) string {
+	return acctest.ConfigCompose(testAccAppmeshGatewayRouteConfigBase(meshName, vgName), fmt.Sprintf(`
+resource "aws_appmesh_gateway_route" "test" {
+  name                 = %[1]q
+  mesh_name            = aws_appmesh_mesh.test.name
+  virtual_gateway_name = aws_appmesh_virtual_gateway.test.name
+
+  spec {
+    http2_route {
+      action {
+        target {
+          virtual_service {
+            virtual_service_name = aws_appmesh_virtual_service.test[1].name
+          }
+        }
+		rewrite {
+			prefix {
+				default_prefix = "DISABLED"
+			}
+			path {
+				exact = "/users"
+			}
+			hostname {
+				default_target_hostname = "DISABLED"
+			}
+		}
       }
 
       match {
